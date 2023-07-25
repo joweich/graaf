@@ -10,57 +10,6 @@ namespace graaf::algorithm {
 
 namespace detail {
 
-template <typename V, typename E, graph_spec S, typename WEIGHT_T>
-std::optional<GraphPath<WEIGHT_T>> get_unweighted_shortest_path(
-    const graph<V, E, S>& graph, vertex_id_t start_vertex,
-    vertex_id_t end_vertex) {
-  std::unordered_set<vertex_id_t> seen_vertices{};
-  std::unordered_map<vertex_id_t, vertex_id_t> prev_vertex{};
-  std::queue<vertex_id_t> to_explore{};
-
-  to_explore.push(start_vertex);
-  seen_vertices.insert(start_vertex);
-
-  // TODO: align/merge with implementation of do_bfs in graph_traversal.tpp
-  while (!to_explore.empty()) {
-    auto current{to_explore.front()};
-    to_explore.pop();
-
-    if (current == end_vertex) {
-      break;
-    }
-
-    for (const auto& neighbor : graph.get_neighbors(current)) {
-      if (!seen_vertices.contains(neighbor)) {
-        seen_vertices.insert(neighbor);
-        prev_vertex[neighbor] = current;
-        to_explore.push(neighbor);
-      }
-    }
-  }
-
-  const auto reconstruct_path = [&start_vertex, &end_vertex, &prev_vertex]() {
-    GraphPath<int> path;
-    auto current{end_vertex};
-
-    while (current != start_vertex) {
-      path.vertices.push_front(current);
-      current = prev_vertex[current];
-    }
-
-    path.vertices.push_front(start_vertex);
-    path.total_weight = path.vertices.size();
-
-    return path;
-  };
-
-  if (seen_vertices.contains(end_vertex)) {
-    return reconstruct_path();
-  } else {
-    return std::nullopt;
-  }
-}
-
 template <typename WEIGHT_T>
 GraphPath<WEIGHT_T> reconstruct_path(
     vertex_id_t start_vertex, vertex_id_t end_vertex,
@@ -76,6 +25,40 @@ GraphPath<WEIGHT_T> reconstruct_path(
   path.vertices.push_front(start_vertex);
   path.total_weight = vertex_info[end_vertex].dist_from_start;
   return path;
+}
+
+template <typename V, typename E, graph_spec S, typename WEIGHT_T>
+std::optional<GraphPath<WEIGHT_T>> get_unweighted_shortest_path(
+    const graph<V, E, S>& graph, vertex_id_t start_vertex,
+    vertex_id_t end_vertex) {
+  std::unordered_map<vertex_id_t, PathVertex<WEIGHT_T>> vertex_info;
+  std::queue<vertex_id_t> to_explore{};
+
+  vertex_info[start_vertex] = {start_vertex, 1, start_vertex};
+  to_explore.push(start_vertex);
+
+  while (!to_explore.empty()) {
+    auto current{to_explore.front()};
+    to_explore.pop();
+
+    if (current == end_vertex) {
+      break;
+    }
+
+    for (const auto& neighbor : graph.get_neighbors(current)) {
+      if (!vertex_info.contains(neighbor)) {
+        vertex_info[neighbor] = {
+            neighbor, vertex_info[current].dist_from_start + 1, current};
+        to_explore.push(neighbor);
+      }
+    }
+  }
+
+  if (vertex_info.contains(end_vertex)) {
+    return reconstruct_path(start_vertex, end_vertex, vertex_info);
+  } else {
+    return std::nullopt;
+  }
 }
 
 template <typename V, typename E, graph_spec S, typename WEIGHT_T>
