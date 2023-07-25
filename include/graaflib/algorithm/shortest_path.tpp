@@ -11,9 +11,13 @@ namespace graaf::algorithm {
 namespace detail {
 
 template <typename WEIGHT_T>
-GraphPath<WEIGHT_T> reconstruct_path(
+std::optional<GraphPath<WEIGHT_T>> reconstruct_path(
     vertex_id_t start_vertex, vertex_id_t end_vertex,
     std::unordered_map<vertex_id_t, PathVertex<WEIGHT_T>>& vertex_info) {
+  if (!vertex_info.contains(end_vertex)) {
+    return std::nullopt;
+  }
+
   GraphPath<WEIGHT_T> path;
   auto current = end_vertex;
 
@@ -54,11 +58,7 @@ std::optional<GraphPath<WEIGHT_T>> get_unweighted_shortest_path(
     }
   }
 
-  if (vertex_info.contains(end_vertex)) {
-    return reconstruct_path(start_vertex, end_vertex, vertex_info);
-  } else {
-    return std::nullopt;
-  }
+  return reconstruct_path(start_vertex, end_vertex, vertex_info);
 }
 
 template <typename V, typename E, graph_spec S, typename WEIGHT_T>
@@ -97,11 +97,7 @@ std::optional<GraphPath<WEIGHT_T>> get_weighted_shortest_path(
     }
   }
 
-  if (vertex_info.contains(end_vertex)) {
-    return reconstruct_path(start_vertex, end_vertex, vertex_info);
-  } else {
-    return std::nullopt;
-  }
+  return reconstruct_path(start_vertex, end_vertex, vertex_info);
 }
 
 }  // namespace detail
